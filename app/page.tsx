@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { GoogleMap, Marker, Polyline, Circle, useJsApiLoader } from '@react-google-maps/api';
 import polyline from '@mapbox/polyline';
 
-const containerStyle = { width: '100%', height: '480px' };
+const containerStyle = { width: '100%', height: '800px' };
 
 export default function RouteMap() {
   const { isLoaded } = useJsApiLoader({
@@ -165,7 +165,7 @@ export default function RouteMap() {
     <div>
       {/* Input Form */}
       <div style={{ padding: '20px', backgroundColor: '#f5f5f5', marginBottom: '20px' }}>
-        <h2 style={{ margin: '0 0 20px 0' }}>Tweequick</h2>
+        <h4 style={{ margin: '0 0 10px 0', textAlign: 'center', fontWeight: 'bold', fontSize: '36px' }}>Tweequick</h4>
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <div>
             <label htmlFor="origin" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
