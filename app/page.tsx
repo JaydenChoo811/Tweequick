@@ -3,6 +3,7 @@
 const API_URL = "https://your-backend-api.com/route";
 
 import { useEffect, useRef, useState } from "react";
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
 export default function MapComponent() {
   // Form state for origin, destination, and travel mode
