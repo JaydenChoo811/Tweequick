@@ -1,45 +1,41 @@
 'use client'
+// Define your backend API URL here
+const API_URL = "https://your-backend-api.com/route";
 
 import { useEffect, useRef, useState } from "react";
 
-// Replace with your API Gateway endpoint
-const API_URL = "https://xxxx.execute-api.ap-southeast-1.amazonaws.com/prod/routes";
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
-// Replace with your Google Maps JS API key
-const GOOGLE_MAPS_API_KEY = "AIzaSyD2zJmzww57x28t-8PKPgayUhxDN7G0MPQ";
-
-export default function SafeRoutesApp() {
-  const mapRef = useRef(null);
-  const [map, setMap] = useState(null);
+export default function MapComponent() {
+  // Form state for origin, destination, and travel mode
   const [form, setForm] = useState({
     origin: "",
     destination: "",
-    travelMode: "DRIVE",
-    weather: "clear"
+    travelMode: "DRIVE"
   });
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
 
-  // Load Google Maps script dynamically
   useEffect(() => {
-    const existing = document.getElementById("googleMaps");
-    if (!existing) {
-      const script = document.createElement("script");
-      script.id = "googleMaps";
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geometry`;
-      script.async = true;
-      script.onload = () => {
-        setMap(
-          new window.google.maps.Map(mapRef.current, {
-            zoom: 13,
-            center: { lat: 3.139, lng: 101.6869 } // KL default
-          })
-        );
-      };
-      document.body.appendChild(script);
-    }
+    if (typeof window === "undefined") return;
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+    script.async = true;
+    script.onload = () => {
+      if (mapRef.current) {
+       const mapInstance: google.maps.Map = new google.maps.Map(mapRef.current, {
+        zoom: 13,
+        center: { lat: 3.139, lng: 101.6869 }, // KL
+      });
+      setMap(mapInstance);
+      }
+    };
+    document.head.appendChild(script);
   }, []);
 
   // Submit form → call backend API
-  async function handleFindRoute(e) {
+    async function handleFindRoute(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!map) return;
@@ -56,7 +52,7 @@ export default function SafeRoutesApp() {
     const data = await res.json();
 
     // Show hazards
-    data.hazards.forEach(hz => {
+  data.hazards.forEach((hz: { lat: number; lng: number }) => {
       new window.google.maps.Circle({
         map,
         center: hz,
@@ -87,7 +83,7 @@ export default function SafeRoutesApp() {
     // Draw alternatives
     if (data.alternatives) {
       const colors = ["green", "orange", "purple"];
-      data.alternatives.forEach((alt, i) => {
+      data.alternatives.forEach((alt: { polyline: string }, i: number) => {
         const path = window.google.maps.geometry.encoding.decodePath(alt.polyline);
         new window.google.maps.Polyline({
           map,
