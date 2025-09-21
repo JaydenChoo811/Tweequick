@@ -1,6 +1,6 @@
 'use client'
 // Define your backend API URL here
-const API_URL = "https://your-backend-api.com/route";
+const API_URL = "https://pt6baqa3jpno5gk2ddvrgni6cy0zfwia.lambda-url.us-east-1.on.aws/";
 
 import { useEffect, useRef, useState } from "react";
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
@@ -44,9 +44,13 @@ export default function MapComponent() {
 
     const res = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
+      mode: "cors",   // 👈 ensure CORS mode
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(form),
     });
+
 
     const data = await res.json();
 
@@ -102,14 +106,14 @@ export default function MapComponent() {
       <form onSubmit={handleFindRoute} style={{ marginBottom: "1em" }}>
         <input
           type="text"
-          placeholder="Origin"
+          placeholder="Origin, City"
           value={form.origin}
           onChange={e => setForm({ ...form, origin: e.target.value })}
           required
         />
         <input
           type="text"
-          placeholder="Destination"
+          placeholder="Destination, City"
           value={form.destination}
           onChange={e => setForm({ ...form, destination: e.target.value })}
           required
