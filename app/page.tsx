@@ -4,8 +4,6 @@ const API_URL = "https://your-backend-api.com/route";
 
 import { useEffect, useRef, useState } from "react";
 
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-
 export default function MapComponent() {
   // Form state for origin, destination, and travel mode
   const [form, setForm] = useState({
@@ -20,7 +18,7 @@ export default function MapComponent() {
     if (typeof window === "undefined") return;
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GM_API}&libraries=geometry`;
     script.async = true;
     script.onload = () => {
       if (mapRef.current) {
