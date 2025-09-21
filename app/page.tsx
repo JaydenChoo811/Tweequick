@@ -1,135 +1,67 @@
-'use client'
-// Define your backend API URL here
-const API_URL = "https://pt6baqa3jpno5gk2ddvrgni6cy0zfwia.lambda-url.us-east-1.on.aws/";
 
-import { useEffect, useRef, useState } from "react";
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import React, { useMemo, useRef, useState } from 'react';
+import { GoogleMap, Marker, Polyline, useJsApiLoader } from '@react-google-maps/api';
+import polyline from '@mapbox/polyline';
 
-export default function MapComponent() {
-  // Form state for origin, destination, and travel mode
-  const [form, setForm] = useState({
-    origin: "",
-    destination: "",
-    travelMode: "DRIVE"
+const containerStyle = { width: '100%', height: '480px' };
+
+export default function RouteMap() {
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GM_API || '<YOUR_API_KEY>',
   });
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const mapRef = useRef<google.maps.Map|null>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GM_API}&libraries=geometry`;
-    script.async = true;
-    script.onload = () => {
-      if (mapRef.current) {
-       const mapInstance: google.maps.Map = new google.maps.Map(mapRef.current, {
-        zoom: 13,
-        center: { lat: 3.139, lng: 101.6869 }, // KL
-      });
-      setMap(mapInstance);
-      }
+  // Example: fetch encoded polyline from your API Gateway Lambda
+  const [encoded, setEncoded] = useState<string | null>(null);
+  const [hazards, setHazards] = useState<any[]>([]);
+  React.useEffect(() => {
+    const run = async () => {
+      const url = 'https://0v53gcwoy9.execute-api.us-east-1.amazonaws.com/default/Polyline?origin=KLCC&destination=Bukit%20Bintang';
+      const res = await fetch(url);
+      const data = await res.json();
+      setEncoded(data.polyline || null);
+      setHazards(data.hazards || []);
     };
-    document.head.appendChild(script);
+    run();
   }, []);
 
-  // Submit form → call backend API
-    async function handleFindRoute(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  // Decode to path usable by <Polyline>
+  const path = useMemo(() => {
+  if (!encoded) return [];
+  // polyline.decode returns [ [lat, lng], ... ]
+  return polyline.decode(encoded).map(([lat, lng]: [number, number]) => ({ lat, lng }));
+  }, [encoded]);
 
-    if (!map) return;
-
-    // Clear old overlays
-    map.overlayMapTypes.clear();
-
-    const res = await fetch(API_URL, {
-      method: "POST",
-      mode: "cors",   // 👈 ensure CORS mode
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(form),
-    });
-
-
-    const data = await res.json();
-
-    // Show hazards
-  data.hazards.forEach((hz: { lat: number; lng: number }) => {
-      new window.google.maps.Circle({
-        map,
-        center: hz,
-        radius: 300,
-        fillColor: "red",
-        strokeColor: "red",
-        strokeOpacity: 0.8,
-        fillOpacity: 0.35
-      });
-    });
-
-    // Draw best route
-    if (data.bestRoute) {
-      const path = window.google.maps.geometry.encoding.decodePath(data.bestRoute.polyline);
-      new window.google.maps.Polyline({
-        map,
-        path,
-        strokeColor: "blue",
-        strokeWeight: 5
-      });
-
-      // Center map on route
-      const bounds = new window.google.maps.LatLngBounds();
-      path.forEach(p => bounds.extend(p));
+  // Fit map bounds to path
+  const onLoad = (map: google.maps.Map) => {
+    mapRef.current = map;
+    if (path.length > 1) {
+      const bounds = new google.maps.LatLngBounds();
+      path.forEach((p: { lat: number; lng: number }) => bounds.extend(p));
       map.fitBounds(bounds);
     }
+  };
 
-    // Draw alternatives
-    if (data.alternatives) {
-      const colors = ["green", "orange", "purple"];
-      data.alternatives.forEach((alt: { polyline: string }, i: number) => {
-        const path = window.google.maps.geometry.encoding.decodePath(alt.polyline);
-        new window.google.maps.Polyline({
-          map,
-          path,
-          strokeColor: colors[i % colors.length],
-          strokeWeight: 3,
-          strokeOpacity: 0.6
-        });
-      });
-    }
-  }
+  if (!isLoaded) return null;
+
+  const origin = path[0];
+  const destination = path[path.length - 1];
 
   return (
-    <div className="App" style={{ fontFamily: "sans-serif" }}>
-      <h2>🚦 Safe Route Finder</h2>
-
-      <form onSubmit={handleFindRoute} style={{ marginBottom: "1em" }}>
-        <input
-          type="text"
-          placeholder="Origin, City"
-          value={form.origin}
-          onChange={e => setForm({ ...form, origin: e.target.value })}
-          required
+    <GoogleMap onLoad={onLoad} mapContainerStyle={containerStyle} center={origin || { lat: 3.139, lng: 101.686 }} zoom={13}>
+      {origin && <Marker position={origin} label="A" />}
+      {destination && <Marker position={destination} label="B" />}
+      {path.length > 1 && (
+        <Polyline
+          path={path}
+          options={{ strokeColor: '#1E90FF', strokeOpacity: 0.9, strokeWeight: 4 }}
         />
-        <input
-          type="text"
-          placeholder="Destination, City"
-          value={form.destination}
-          onChange={e => setForm({ ...form, destination: e.target.value })}
-          required
-        />
-        <select
-          value={form.travelMode}
-          onChange={e => setForm({ ...form, travelMode: e.target.value })}
-        >
-          <option value="DRIVE">Drive</option>
-          <option value="WALK">Walk</option>
-          <option value="TWO-WHEELER">Two-Wheeler</option>
-        </select>
-        <button type="submit">Find Route</button>
-      </form>
+      )}
 
-      <div ref={mapRef} style={{ width: "100%", height: "80vh" }} />
-    </div>
+      {/* Optional: render hazards as markers */}
+      {hazards.map(h => (
+        <Marker key={h.id} position={{ lat: h.lat, lng: h.lng }} label="!" />
+      ))}
+    </GoogleMap>
   );
 }
